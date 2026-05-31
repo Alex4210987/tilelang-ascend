@@ -246,6 +246,14 @@ def Kernel(
     attrs: dict = {}
     if is_npu:
         assert len(blocks) == 1, "NPU kernel must have exactly one block dimension"
+        # Ascend 910B3 aicore scheduler limit: >1024 tiles causes a 507015 hardware
+        # exception that poisons the entire NPU process. Catch this at compile time.
+        _npu_block_count = blocks[0]
+        if isinstance(_npu_block_count, int) and _npu_block_count > 1024:
+            raise ValueError(
+                f"NPU tile count {_npu_block_count} exceeds Ascend 910B3 limit of 1024. "
+                f"Use larger block sizes to reduce the tile count."
+            )
         if threads is None:
             attrs["tilelang.is_npu_kernel_frame"] = True
         else:
